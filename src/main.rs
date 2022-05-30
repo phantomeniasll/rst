@@ -33,7 +33,7 @@ impl Box
             size: [w, h],
         }
     }
-    fn toVertex(&self) -> [Vertex; 6]
+    fn to_vertex(&self) -> [Vertex; 6]
     {
         let mut vertices = [Vertex::new(0.0, 0.0); 6];
         let pos = self.position;
@@ -66,7 +66,7 @@ fn main() {
     let my_box = Box::new(0.0, 0.0, 0.5, 0.5);
 
 
-    let vertex_buffer = glium::VertexBuffer::new(&display, &my_box.toVertex()).unwrap();
+    let vertex_buffer = glium::VertexBuffer::new(&display, &my_box.to_vertex()).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
     let vertex_shader_src = r#"
