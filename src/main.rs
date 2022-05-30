@@ -35,10 +35,11 @@ fn main() {
 
     let vertex_shader_src = r#"
      #version 140
-
+    uniform float time;
     in vec2 position;
-
+    out vec2 pos;
     void main() {
+        pos = position;
         gl_Position = vec4(position, 0.0, 1.0);
     }
 "#;
@@ -46,10 +47,12 @@ fn main() {
     let fragment_shader_src = r#"
      #version 140
     uniform float time;
+    in vec2 pos;
     out vec4 color;
 
     void main() {
-        color = vec4(1.0, cos(time), 0.0, 1.0);
+        vec2 pos2 = mod(pos,0.1);
+        color = vec4(0.0, 0., mod(pos2.x * 10. + pos.y,1.), 1.0);
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
