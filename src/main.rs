@@ -8,8 +8,45 @@ struct Vertex {
     position: [f32; 2],
 }
 
+impl Vertex {
+    fn new(x: f32, y: f32) -> Vertex {
+        Vertex {
+            position: [x, y],
+        }
+    }
+}
+
 implement_vertex!(Vertex, position);
 
+struct Box
+{
+    position: [f32; 2],
+    size: [f32; 2],
+}
+
+impl Box
+{
+    fn new(x: f32, y: f32, w: f32, h: f32) -> Box
+    {
+        Box {
+            position: [x, y],
+            size: [w, h],
+        }
+    }
+    fn toVertex(&self) -> [Vertex; 6]
+    {
+        let mut vertices = [Vertex::new(0.0, 0.0); 6];
+        let pos = self.position;
+        let size = self.size;
+        vertices[0] = Vertex::new(pos[0] - size[0],pos[1] - size[1]);
+        vertices[1] = Vertex::new(pos[0] + size[0],pos[1] - size[1]);
+        vertices[2] = Vertex::new(pos[0] + size[0],pos[1] + size[1]);
+        vertices[3] = Vertex::new(pos[0] - size[0],pos[1] - size[1]);
+        vertices[4] = Vertex::new(pos[0] - size[0],pos[1] + size[1]);
+        vertices[5] = Vertex::new(pos[0] + size[0],pos[1] + size[1]);
+        vertices
+    }
+}
 
 fn main() {
     use glium::glutin;
@@ -25,12 +62,11 @@ fn main() {
 
 
 
-    let vertex1 = Vertex { position: [-0.5, -0.5] };
-    let vertex2 = Vertex { position: [ 0.0,  0.5] };
-    let vertex3 = Vertex { position: [ 0.5, -0.25] };
-    let shape = vec![vertex1, vertex2, vertex3];
 
-    let vertex_buffer = glium::VertexBuffer::new(&display, &shape).unwrap();
+    let my_box = Box::new(0.0, 0.0, 0.5, 0.5);
+
+
+    let vertex_buffer = glium::VertexBuffer::new(&display, &my_box.toVertex()).unwrap();
     let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
     let vertex_shader_src = r#"
@@ -38,9 +74,10 @@ fn main() {
     uniform float time;
     in vec2 position;
     out vec2 pos;
+    uniform mat4 matrix;
     void main() {
         pos = position;
-        gl_Position = vec4(position, 0.0, 1.0);
+        gl_Position = matrix * vec4(position, 0.0, 1.0);
     }
 "#;
 
@@ -62,9 +99,15 @@ fn main() {
     event_loop.run(move |ev, _, control_flow| {
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 1.0, 1.0);
-        let tim = start.elapsed().as_secs_f32();
+        let time = start.elapsed().as_secs_f32();
         let uniforms = uniform! {
-            time: tim
+            time: time,
+            matrix: [
+            [1.0, 0., 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [ 0. , 0.0, 0.0, 1.0f32],
+            ]
         };
         target.draw(&vertex_buffer, &indices, &program, &uniforms,
             &Default::default()).unwrap();
