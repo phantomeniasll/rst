@@ -1,3 +1,5 @@
+mod game_object;
+
 extern crate glium;
 
 use std::time::Instant;
@@ -52,7 +54,6 @@ impl Box
     {
         let vertex_buffer = glium::VertexBuffer::new(display, &self.to_vertex()).unwrap();
         let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
-
 
         let uniforms = uniform! {
             time: time.to_owned(),
@@ -133,7 +134,7 @@ fn main() {
 
 
         let next_frame_time = std::time::Instant::now() +
-            std::time::Duration::from_nanos(33_333_333); // limit to 30 fps
+            std::time::Duration::from_nanos(133_333_333); // limit the fps
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
 
