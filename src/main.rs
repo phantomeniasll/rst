@@ -1,7 +1,7 @@
 extern crate glium;
 
 use std::time::Instant;
-use glium::{implement_vertex, uniform};
+use glium::{Display, Frame, implement_vertex, Program, Surface, uniform};
 
 #[derive(Copy, Clone)]
 struct Vertex {
@@ -46,14 +46,34 @@ impl Box
         vertices[5] = Vertex::new(pos[0] + size[0],pos[1] + size[1]);
         vertices
     }
+    fn draw(&self, display: &Display, mut target: Frame, shader_program: &Program, time: &f32) -> Frame
+    {
+        let vertex_buffer = glium::VertexBuffer::new(display, &self.to_vertex()).unwrap();
+        let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
+
+
+        let uniforms = uniform! {
+            time: time.to_owned(),
+            matrix: [
+            [1.0, 0., 0.0, 0.0],
+            [0.0, 1.0, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [ 0. , 0.0, 0.0, 1.0f32],
+            ]
+        };
+        target.draw(&vertex_buffer, &indices, &shader_program, &uniforms,
+                    &Default::default()).unwrap();
+        return target;
+
+
+    }
 }
 
 fn main() {
     use glium::glutin;
-    use glium::Surface;
 
 
-    let mut event_loop = glutin::event_loop::EventLoop::new();
+    let event_loop = glutin::event_loop::EventLoop::new();
 
     let wb = glutin::window::WindowBuilder::new();
     let cb = glutin::ContextBuilder::new();
@@ -62,12 +82,12 @@ fn main() {
 
 
 
-
+    let mut boxes = Vec::new();
     let my_box = Box::new(0.0, 0.0, 0.5, 0.5);
+    let my_box2 = Box::new(0.2, 0.2, 0.5, 0.5);
+    boxes.push(my_box);
+    boxes.push(my_box2);
 
-
-    let vertex_buffer = glium::VertexBuffer::new(&display, &my_box.to_vertex()).unwrap();
-    let indices = glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList);
 
     let vertex_shader_src = r#"
      #version 140
@@ -89,7 +109,7 @@ fn main() {
 
     void main() {
         vec2 pos2 = mod(pos,0.1);
-        color = vec4(0.0, 0., mod(pos2.x * 10. + pos.y,1.), 1.0);
+        color = vec4(0.4, 0., mod(pos2.x * 10. + pos.y,1.), 1.0);
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
@@ -97,25 +117,19 @@ fn main() {
 
 
     event_loop.run(move |ev, _, control_flow| {
+        let time = start.elapsed().as_secs_f32();
         let mut target = display.draw();
         target.clear_color(0.0, 0.0, 1.0, 1.0);
-        let time = start.elapsed().as_secs_f32();
-        let uniforms = uniform! {
-            time: time,
-            matrix: [
-            [1.0, 0., 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0],
-            [0.0, 0.0, 1.0, 0.0],
-            [ 0. , 0.0, 0.0, 1.0f32],
-            ]
-        };
-        target.draw(&vertex_buffer, &indices, &program, &uniforms,
-            &Default::default()).unwrap();
+        for box_ in &boxes
+        {
+            target = box_.draw(&display, target, &program, &time);
+        }
         target.finish().unwrap();
 
 
+
         let next_frame_time = std::time::Instant::now() +
-            std::time::Duration::from_nanos(16_666_667);
+            std::time::Duration::from_nanos(33_333_333); // limit to 30 fps
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
 
