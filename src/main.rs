@@ -22,15 +22,17 @@ struct Box
 {
     position: [f32; 2],
     size: [f32; 2],
+    color: [f32; 3],
 }
 
 impl Box
 {
-    fn new(x: f32, y: f32, w: f32, h: f32) -> Box
+    fn new(x: f32, y: f32, w: f32, h: f32, r: f32, g: f32, b: f32) -> Box
     {
         Box {
             position: [x, y],
             size: [w, h],
+            color: [r,g,b],
         }
     }
     fn to_vertex(&self) -> [Vertex; 6]
@@ -54,6 +56,7 @@ impl Box
 
         let uniforms = uniform! {
             time: time.to_owned(),
+            base_color: self.color,
             matrix: [
             [1.0, 0., 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0],
@@ -83,8 +86,8 @@ fn main() {
 
 
     let mut boxes = Vec::new();
-    let my_box = Box::new(0.0, 0.0, 0.5, 0.5);
-    let my_box2 = Box::new(0.2, 0.2, 0.5, 0.5);
+    let my_box = Box::new(0.0, 0.0, 0.5, 0.5, 0.2,1.0, 0.0);
+    let my_box2 = Box::new(0.2, 0.2, 0.5, 0.5, 1.0, 0.0, 1.0);
     boxes.push(my_box);
     boxes.push(my_box2);
 
@@ -104,12 +107,13 @@ fn main() {
     let fragment_shader_src = r#"
      #version 140
     uniform float time;
+    uniform vec3 base_color;
     in vec2 pos;
     out vec4 color;
 
     void main() {
         vec2 pos2 = mod(pos,0.1);
-        color = vec4(0.4, 0., mod(pos2.x * 10. + pos.y,1.), 1.0);
+        color = vec4(1., 0.5, mod(pos2.x * 10. + pos.y,1.), 1.0) * vec4(base_color,1.);
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
