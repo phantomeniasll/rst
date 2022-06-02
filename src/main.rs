@@ -1,3 +1,5 @@
+//mod game_object;
+
 mod game_object;
 
 extern crate glium;
@@ -114,7 +116,7 @@ fn main() {
 
     void main() {
         vec2 pos2 = mod(pos,0.1);
-        color = vec4(1., 0.5, mod(pos2.x * 10. + pos.y,1.), 1.0) * vec4(base_color,1.);
+        color = vec4(1., 0.5, mod(pos2.x * 10. + pos.y,1.)+sin(time), 1.0) * vec4(base_color,1.);
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
@@ -134,7 +136,7 @@ fn main() {
 
 
         let next_frame_time = std::time::Instant::now() +
-            std::time::Duration::from_nanos(133_333_333); // limit the fps
+            std::time::Duration::from_nanos(33_333_333); // limit the fps
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
 
