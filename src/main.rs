@@ -29,47 +29,63 @@ fn main() {
     let image_dimensions = image.dimensions();
     let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
 
-    let texture = glium::texture::SrgbTexture2d::new(&display, image).unwrap();
+
+    //3d Stuff
+    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
+    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList,
+                                      &teapot::INDICES).unwrap();
 
 
     let vertex_shader_src = r#"
-     #version 140
-    uniform float time;
-    in vec2 position;
-    in vec2 tex_coords;
-    out vec2 pos;
-    out vec2 v_tex_coords;
+    #version 150
+    in vec3 position;
+    in vec3 normal;
+
+    out vec3 v_normal;
+    out vec3 pos;
     uniform mat4 matrix;
+
     void main() {
-        pos = position;
-        v_tex_coords = tex_coords;
-        gl_Position = matrix * vec4(position, 0.0, 1.0);
+        v_normal = transpose(inverse(mat3(matrix))) * normal;
+        gl_Position = matrix * vec4(position, 1.0);
+        pos = gl_Position.xyz;
     }
 "#;
 
     let fragment_shader_src = r#"
-     #version 140
-    uniform float time;
-    uniform vec3 base_color;
-    uniform sampler2D tex;
-    in vec2 v_tex_coords;
-    in vec2 pos;
+     #version 150
     out vec4 color;
+    in vec3 v_normal;
+    in vec3 pos;
+    uniform vec3 u_light;
 
     void main() {
-        vec2 pos2 = mod(pos,0.1);
-        //color = vec4(1., 0.5, mod(pos2.x * 10. + pos.y,1.)+sin(time), 1.0) * vec4(base_color,1.);
-        color = texture(tex, v_tex_coords + 0.1 * vec2(sin(time),cos(time)));
+        float brightness = dot(normalize(v_normal), normalize(u_light));
+        vec4 dark_color = vec4(0.0, 0.2, cos(pos.y), 1.0);
+        vec4 bright_color = vec4(1.0, 1.0, sin(pos.x), 1.0);
+        color = mix(dark_color, bright_color, brightness);
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
     let start = Instant::now();
+    let light = [-1.0, 0.4, 0.9f32];
 
 
     event_loop.run(move |ev, _, control_flow| {
         let time = start.elapsed().as_secs_f32();
         let mut target = display.draw();
-        target.clear_color(0.0, 0.0, 1.0, 1.0);
+        target.clear_color(0.0, 0.0, 0.0, 1.0);
+
+        let matrix = [
+            [0.01, 0.0, 0.0, 0.0],
+            [0.0, 0.01, 0.0, 0.0],
+            [0.0, 0.0, 0.01, 0.0],
+            [0.0, 0.0, 0.0, 1.0f32]
+        ];
+
+        target.draw((&positions, &normals), &indices, &program, &uniform! { matrix: matrix, u_light: light },
+            &Default::default()).unwrap();
 
         target.finish().unwrap();
 
