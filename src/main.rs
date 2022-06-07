@@ -10,6 +10,41 @@ extern crate image;
 use std::time::Instant;
 use glium::{Display, Frame, implement_vertex, Program, Surface, uniform};
 
+fn cross_product(vec1: &[f32;3], vec2: &[f32;3]) -> [f32;3]
+{
+    [vec1[1] * vec2[2] - vec1[2] * vec2[1],
+             vec1[2] * vec2[0] - vec1[0] * vec2[2],
+             vec1[0] * vec2[1] - vec1[1] * vec2[0]]
+}
+
+fn normalize(vec: &[f32; 3]) -> [f32;3]
+{
+        let len = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+        let len = len.sqrt();
+        [vec[0] / len, vec[1] / len, vec[2] / len]
+}
+
+fn view_matrix(position: &[f32; 3], direction: &[f32; 3], up: &[f32; 3]) -> [[f32; 4]; 4] {
+    // get the length of the camera direction vector and divide it by the length
+    let camera_direction = normalize(direction);
+
+    let s = cross_product(up, &camera_direction);
+
+    let s_norm = normalize(&s);
+
+    let u = cross_product(&camera_direction, &s_norm);
+
+    let p = [-position[0] * s_norm[0] - position[1] * s_norm[1] - position[2] * s_norm[2],
+             -position[0] * u[0] - position[1] * u[1] - position[2] * u[2],
+             -position[0] * camera_direction[0] - position[1] * camera_direction[1] - position[2] * camera_direction[2]];
+
+    [
+        [s_norm[0], u[0], camera_direction[0], 0.0],
+        [s_norm[1], u[1], camera_direction[1], 0.0],
+        [s_norm[2], u[2], camera_direction[2], 0.0],
+        [p[0], p[1], p[2], 1.0],
+    ]
+}
 
 
 fn main() {
@@ -53,12 +88,15 @@ fn main() {
 
     out vec3 v_normal;
     out vec3 pos;
-    uniform mat4 matrix;
+
     uniform mat4 perspective;
+    uniform mat4 view;
+    uniform mat4 model;
 
     void main() {
-        v_normal = transpose(inverse(mat3(matrix))) * normal;
-        gl_Position = perspective * matrix * vec4(position, 1.0);
+        mat4 modelview = view * model;
+        v_normal = transpose(inverse(mat3(modelview))) * normal;
+        gl_Position = perspective * modelview * vec4(position, 1.0);
         pos = gl_Position.xyz;
     }
 "#;
@@ -69,11 +107,12 @@ fn main() {
     in vec3 v_normal;
     in vec3 pos;
     uniform vec3 u_light;
+    uniform float time;
 
     void main() {
         float brightness = dot(normalize(v_normal), normalize(u_light));
-        vec4 dark_color = vec4(0.5, 0.1, 0.1, 1.0);
-        vec4 bright_color = vec4(1.,0.3, 0.3, 1.0);
+        vec4 dark_color = vec4(0.5, 0.1, 0.2*sin(5.0 * time), 1.0);
+        vec4 bright_color = vec4(tan(time),cos(time), sin(time), 1.0);
         color = mix(dark_color, bright_color, brightness);
     }
 "#;
@@ -106,14 +145,15 @@ fn main() {
         };
         target.clear_color_and_depth((0.0, 0.0, 1.0, 1.0), 1.0);
 
-        let matrix = [
-            [0.01, 0.0, 0.0,0.0],
-            [0.0, 0.01, 0.0, 0.0],
+        let model = [
+            [0.01*time.cos(), -0.01*time.sin(), 0.0,0.0],
+            [0.01*time.sin(), 0.01*time.cos(), 0.0, 0.0],
             [0.0, 0.0, 0.01, 0.0],
-            [0.0, 0.0, 2.0, 1.0f32]
+            [time.cos(), time.sin(), 2.0, 1.0f32]
         ];
+        let view = view_matrix(&[2.0, -1.0, 1.0], &[-2.0, 1.0, 1.0], &[0.0, 1.0, 0.0]);
 
-        target.draw((&positions, &normals), &indices, &program, &uniform! { matrix: matrix, u_light: light, perspective: perspective },
+        target.draw((&positions, &normals), &indices, &program, &uniform! { model: model, view: view, u_light: light, perspective: perspective, time:time },
             &params).unwrap();
 
         target.finish().unwrap();
@@ -121,7 +161,7 @@ fn main() {
 
 
         let next_frame_time = std::time::Instant::now() +
-            std::time::Duration::from_nanos(33_333_333); // limit the fps
+            std::time::Duration::from_nanos(16_333_333); // limit the fps
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
 
