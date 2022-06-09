@@ -50,9 +50,6 @@ fn view_matrix(position: &[f32; 3], direction: &[f32; 3], up: &[f32; 3]) -> [[f3
 fn main() {
     use glium::glutin;
 
-
-
-
     let event_loop = glutin::event_loop::EventLoop::new();
 
     let wb = glutin::window::WindowBuilder::new();
@@ -87,7 +84,7 @@ fn main() {
     in vec3 normal;
 
     out vec3 v_normal;
-    out vec3 pos;
+    out vec3 v_position;
 
     uniform mat4 perspective;
     uniform mat4 view;
@@ -97,7 +94,8 @@ fn main() {
         mat4 modelview = view * model;
         v_normal = transpose(inverse(mat3(modelview))) * normal;
         gl_Position = perspective * modelview * vec4(position, 1.0);
-        pos = gl_Position.xyz;
+        v_position = gl_Position.xyz / gl_Position.w;
+
     }
 "#;
 
@@ -105,15 +103,23 @@ fn main() {
      #version 150
     out vec4 color;
     in vec3 v_normal;
-    in vec3 pos;
+    in vec3 v_position;
     uniform vec3 u_light;
     uniform float time;
 
+    const vec3 ambient_color = vec3(0.2, 0.0, 0.0);
+    const vec3 diffuse_color = vec3(0.6, 0.0, 0.0);
+    const vec3 specular_color = vec3(1.0, 1.0, 1.0);
+
     void main() {
-        float brightness = dot(normalize(v_normal), normalize(u_light));
-        vec4 dark_color = vec4(0.5, 0.1, 0.2*sin(5.0 * time), 1.0);
-        vec4 bright_color = vec4(tan(time),cos(time), sin(time), 1.0);
-        color = mix(dark_color, bright_color, brightness);
+        float diffuse = max(dot(normalize(v_normal), normalize(u_light)), 0.0);
+
+        vec3 camera_dir = normalize(-v_position);
+        vec3 half_direction = normalize(normalize(u_light) + camera_dir);
+        float specular = pow(max(dot(half_direction, normalize(v_normal)), 0.0), 16.0);
+
+        color = vec4(ambient_color + diffuse * diffuse_color + specular * specular_color, 1.0);
+
     }
 "#;
     let program = glium::Program::from_source(&display, vertex_shader_src, fragment_shader_src, None).unwrap();
@@ -149,7 +155,7 @@ fn main() {
             [0.01*time.cos(), -0.01*time.sin(), 0.0,0.0],
             [0.01*time.sin(), 0.01*time.cos(), 0.0, 0.0],
             [0.0, 0.0, 0.01, 0.0],
-            [time.cos(), time.sin(), 2.0, 1.0f32]
+            [0., 0., 2.0, 1.0f32]
         ];
         let view = view_matrix(&[2.0, -1.0, 1.0], &[-2.0, 1.0, 1.0], &[0.0, 1.0, 0.0]);
 
